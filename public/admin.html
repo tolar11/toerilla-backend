@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Toe-Rilla Admin</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #0f1115; color: #e8e8e8; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #9aa0a8; font-size: 13px; margin-bottom: 20px; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat { background: #1a1d23; border: 1px solid #2a2e37; border-radius: 10px; padding: 12px 16px; min-width: 110px; }
+  .stat .n { font-size: 22px; font-weight: 700; }
+  .stat .l { font-size: 11px; color: #9aa0a8; text-transform: uppercase; letter-spacing: .04em; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #23262e; }
+  th { color: #9aa0a8; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .open { background: #2a3a2a; color: #8fe08f; }
+  .filled { background: #2a2f3a; color: #8fb3e0; }
+  .cancelled { background: #3a2a2a; color: #e08f8f; }
+  .pay-paid { color: #8fe08f; }
+  .pay-pending { color: #e0c88f; }
+  .pay-free { color: #9aa0a8; }
+  #loginBox, #err { max-width: 420px; }
+  input { background: #1a1d23; border: 1px solid #2a2e37; color: #e8e8e8; padding: 8px 10px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+  button { background: #3a6df0; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  a { color: #8fb3e0; }
+</style>
+</head>
+<body>
+  <h1>Toe-Rilla Admin</h1>
+  <div class="sub">Internal view — open gigs, matches, payment status. Not linked from the public site.</div>
+
+  <div id="loginBox">
+    <p>Enter the admin token to continue:</p>
+    <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" />
+    <button onclick="login()">View dashboard</button>
+    <p id="err" style="color:#e08f8f;"></p>
+  </div>
+
+  <div id="dash" style="display:none;">
+    <div class="stats" id="stats"></div>
+    <table>
+      <thead>
+        <tr><th>Gig #</th><th>Venue</th><th>Date</th><th>Genre</th><th>Urgency</th><th>Status</th><th>Musician</th><th>Payment</th><th>Amount</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+<script>
+  function tokenKey() { return 'toerilla_admin_token'; }
+
+  async function login() {
+    const token = document.getElementById('tokenInput').value.trim();
+    const ok = await load(token);
+    if (ok) {
+      sessionStorage.setItem(tokenKey(), token); // memory for this tab only; not required to persist
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('dash').style.display = 'block';
+    }
+  }
+
+  async function load(token) {
+    document.getElementById('err').textContent = '';
+    try {
+      const res = await fetch('/api/admin/overview', { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) {
+        document.getElementById('err').textContent = res.status === 401 ? 'Wrong token.' : 'Error loading data.';
+        return false;
+      }
+      const data = await res.json();
+      render(data);
+      return true;
+    } catch (e) {
+      document.getElementById('err').textContent = 'Could not reach the API.';
+      return false;
+    }
+  }
+
+  function render(data) {
+    const c = data.counts;
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="n">${c.venue_count}</div><div class="l">Venues</div></div>
+      <div class="stat"><div class="n">${c.musician_count}</div><div class="l">Musicians</div></div>
+      <div class="stat"><div class="n">${c.open_gigs}</div><div class="l">Open Gigs</div></div>
+      <div class="stat"><div class="n">${c.filled_gigs}</div><div class="l">Filled Gigs</div></div>
+      <div class="stat"><div class="n">${c.pending_payments}</div><div class="l">Pending Payments</div></div>
+    `;
+    document.getElementById('rows').innerHTML = data.gigs.map(g => `
+      <tr>
+        <td>#${g.id}</td>
+        <td>${g.venue_name}</td>
+        <td>${g.gig_date}${g.gig_time ? ' ' + g.gig_time : ''}</td>
+        <td>${g.genre_needed}</td>
+        <td>${g.urgency}</td>
+        <td><span class="badge ${g.status}">${g.status}</span></td>
+        <td>${g.musician_name || '—'}</td>
+        <td class="pay-${g.payment_status}">${g.payment_status}${g.stripe_checkout_url ? ` (<a href="${g.stripe_checkout_url}" target="_blank">link</a>)` : ''}</td>
+        <td>${g.amount_due_cents != null ? '$' + (g.amount_due_cents / 100).toFixed(2) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Auto-login if a token was already entered this tab session.
+  const saved = sessionStorage.getItem(tokenKey());
+  if (saved) {
+    document.getElementById('tokenInput').value = saved;
+    login();
+  }
+</script>
+</body>
+</html>
