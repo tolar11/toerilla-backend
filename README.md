@@ -1,88 +1,157 @@
-# Toe-Rilla Gig Network — Phase 1 Backend (Working Prototype)
+# Toe-Rilla Gig Network — Phase 2 Backend
 
-This is a real, tested backend implementing the core Phase 1 matching engine:
-venue/musician sign-up, gig posting, automatic matching by genre/reach,
-first-to-claim booking, the finalized pricing logic (first gig free,
-second gig 50% off, 15% commission after, or $0 if subscribed), and live
-Twilio SMS notifications with "reply YES to claim" support.
+Phase 2 build on top of the Phase 1 prototype: real Postgres database, real
+Twilio SMS, real Stripe payments/billing, a minimal admin dashboard, and a
+wiring guide for the live landing page. See `PROJECT_BRIEF.md` for the full
+spec this was built against, and `PHASE1_VS_PHASE2.md` for exactly what
+changed and why.
 
-## Requirements
-- Node.js 18+
-- A Twilio account with a phone number (optional — the server runs fine
-  without one, it just logs SMS to the console instead of sending them)
+## What's here
 
-## Setup
+```
+server.js                 Express app — all API routes
+db/schema.sql              Postgres schema (was SQLite in Phase 1)
+db/index.js                Postgres connection pool + schema bootstrap
+lib/matching.js             Matching engine + pricing rules (business logic)
+lib/claim.js                Race-safe "claim a gig" transaction (shared by HTTP + SMS)
+lib/sms.js                  Twilio wrapper (falls back to console logging without creds)
+lib/stripe.js               Stripe wrapper (checkout + subscriptions + webhooks)
+lib/referrals.js            Founding Member counter + referral credit ledger
+public/admin.html           Minimal internal dashboard (token-protected)
+test/pricing-and-matching.test.js   Dependency-free tests for the pricing/matching rules
+LANDING_PAGE_WIRING.md      Exact HTML/JS changes for toerillagignetwork.com
+.env.example                Every environment variable, explained
+```
+
+## Local setup
+
+Requires Node 18+ and a Postgres database (local, Docker, or a free Railway/
+Render instance — doesn't matter for local dev).
+
 ```bash
 npm install
-cp .env.example .env   # then fill in your Twilio credentials
-node server.js
+cp .env.example .env
+# edit .env: set DATABASE_URL to your Postgres connection string
+npm start
 ```
-Server starts on http://localhost:3000
 
-## Twilio setup
-1. Get an Account SID, Auth Token, and phone number from
-   [console.twilio.com](https://console.twilio.com).
-2. Put them in `.env` (local) or your Railway service's variables
-   (production): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
-   `TWILIO_PHONE_NUMBER`.
-3. In the Twilio console, open your phone number's configuration and set
-   "A message comes in" to a webhook pointing at
-   `https://<your-deployed-domain>/api/sms/inbound` (HTTP POST).
-4. Set `PUBLIC_BASE_URL` to that same base domain (e.g.
-   `https://your-app.up.railway.app`) so inbound webhook requests can be
-   signature-verified. Without a Twilio Auth Token configured, signature
-   verification is skipped (dev mode).
+The server creates its schema automatically on startup (safe to re-run).
+Health check: `curl http://localhost:3000/api/health`
 
-## Deploying to Railway
-1. Push this repo to GitHub, then in Railway: New Project → Deploy from
-   GitHub repo.
-2. Add a Volume to the service (Settings → Volumes) mounted at `/data`, and
-   set the env var `DB_PATH=/data/toerilla.db`. Without this the SQLite
-   file lives in the container's filesystem and is wiped on every redeploy.
-3. Set the `TWILIO_*` and `PUBLIC_BASE_URL` env vars from above in the
-   service's Variables tab.
-4. Railway auto-detects the `start` script in `package.json` — no extra
-   config needed. Once deployed, grab the generated `*.up.railway.app`
-   domain and point the Twilio webhook (step 3 above) at it.
+### Running the tests
 
-## API Endpoints
+```bash
+npm test
+```
 
-- `POST /api/venues` — sign up a venue
-  Body: { name, contact_phone, contact_email, city, state, founding_member }
+This runs `test/pricing-and-matching.test.js`, which checks the pricing math
+and matching filters against the exact rules in `PROJECT_BRIEF.md` (first
+gig free, second gig 50% off within 30 days, 15% commission after,
+subscription overrides, local/regional/nationwide matching). It stubs the
+database layer so it runs without Postgres or any npm packages beyond Node
+itself — useful as a fast sanity check before deploying a change to this
+logic. It is **not** a substitute for testing the full HTTP API against a
+real Postgres instance (do that manually, or add integration tests, before
+launch).
 
-- `POST /api/musicians` — sign up a musician
-  Body: { name, contact_phone, contact_email, city, state, genres, instruments, reach, rate_min, rate_max, founding_member }
+> Note on how this was verified while building it: the sandbox this was
+> built in blocks outbound access to the npm registry, so `npm install`
+> couldn't be run there to do a full end-to-end smoke test. What *was*
+> verified there: every file passes `node --check` (valid syntax), the full
+> `db/schema.sql` applies cleanly to a real Postgres 16 instance (including
+> a from-scratch re-run to confirm idempotency), sample rows insert
+> correctly, and all 12 pricing/matching unit tests pass. Run `npm install
+> && npm test` yourself once, and do one manual pass through the sign-up →
+> post-gig → claim flow against a real Postgres instance, before you rely on
+> this in production — normal practice for any handoff, but worth being
+> explicit about here since I couldn't do that last mile myself.
 
-- `POST /api/gigs` — venue posts an open slot (triggers auto-matching + notification log)
-  Body: { venue_id, gig_date, gig_time, genre_needed, budget, urgency }
+## Deploying to Railway (the brief's suggested default)
 
-- `POST /api/gigs/:id/claim` — musician claims a gig (first to claim wins)
-  Body: { musician_id }
+1. **Push this folder to a GitHub repo** (Railway deploys from Git).
+2. In Railway: **New Project → Deploy from GitHub repo**, pick the repo.
+3. **Add a Postgres database**: in the same project, "+ New" → "Database" →
+   "PostgreSQL". Railway automatically injects `DATABASE_URL` into your app
+   service's environment — you don't need to copy/paste it.
+4. On your app service, open **Variables** and add everything else from
+   `.env.example` that isn't `DATABASE_URL`:
+   - `ADMIN_TOKEN` — make up a long random string
+   - `APP_BASE_URL` — Railway gives you a domain like
+     `https://toerilla-backend-production.up.railway.app`; set this to that
+     (Stripe redirect URLs need it)
+   - `ALLOWED_ORIGIN` — `https://toerillagignetwork.com` once you're ready to
+     lock it down (start with `*` while testing)
+   - Twilio and Stripe vars — see the two sections below. You can deploy and
+     test the core sign-up/gig/match/claim loop before setting these; the
+     app runs in safe fallback mode without them.
+5. Railway auto-detects `npm start` from `package.json` — no extra config
+   needed. First deploy will run `npm install`, then start the server, which
+   applies `db/schema.sql` automatically.
+6. Once deployed, hit `https://<your-app>.up.railway.app/api/health` to
+   confirm it's live, then follow `LANDING_PAGE_WIRING.md` to point the
+   landing page's sign-up form at this URL.
 
-- `POST /api/sms/inbound` — Twilio webhook for inbound SMS; a musician
-  replying "YES" claims their most recent open gig notification
+(Render or Fly.io work the same way in spirit — provision a Postgres add-on,
+set the same env vars, deploy from Git. Railway is simplest for a first
+deploy, per the brief's own recommendation.)
 
-- `GET /api/gigs` — list all gigs
-- `GET /api/venues` — list all venues
-- `GET /api/musicians` — list all musicians
-- `GET /api/health` — health check
+## Setting up Twilio
 
-## What this proves
-This is a genuinely working Phase 1 matching engine — not a mockup. It has
-been tested end-to-end: sign-up, gig posting, automatic matching, first-to-
-claim booking, and pricing calculation all function correctly. SMS
-notifications now go out for real via Twilio, and musicians can claim a
-gig by replying YES to the text.
+1. Create a Twilio account, buy a phone number capable of SMS.
+2. Copy your Account SID and Auth Token from the Twilio Console into
+   `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`; set `TWILIO_FROM_NUMBER` to
+   the number you bought (E.164 format, e.g. `+18505551234`).
+3. In the Twilio Console, set that number's **"A message comes in"** webhook
+   to `POST https://<your-app>/api/sms/inbound` — this is what lets a
+   musician text "YES" to claim a gig.
+4. Without any of this set, the app logs what it would have sent to the
+   console instead of erroring — safe to deploy and test before you have a
+   Twilio account.
 
-## What's NOT in this version yet (Phase 2)
-- No Claude API / Concierge AI layer yet
-- No Stripe payment integration yet
-- No web frontend (API only — a developer would build a UI or connect the
-  existing landing page's forms to these endpoints)
-- Uses SQLite (file-based) — fine for early/moderate traffic if backed by a
-  Railway volume, would move to a hosted Postgres database at real scale
+## Setting up Stripe
 
-## Next steps to make this live
-1. Add Stripe for the payment/commission step
-2. Build a simple admin dashboard (or connect the existing landing page forms)
-3. Layer in Claude API calls for Concierge once the core loop is proven
+1. Create a Stripe account (test mode is fine to start).
+2. Copy your secret key into `STRIPE_SECRET_KEY`.
+3. In the Stripe Dashboard, create two recurring **Products/Prices**:
+   Growth ($99/month) and Auto-Book Premium ($149/month). Copy each Price
+   ID into `STRIPE_PRICE_GROWTH` / `STRIPE_PRICE_AUTO_BOOK_PREMIUM`.
+4. Add a webhook endpoint in the Stripe Dashboard pointing at
+   `https://<your-app>/api/stripe/webhook`, listening for at least
+   `checkout.session.completed` and `customer.subscription.deleted`. Copy
+   its signing secret into `STRIPE_WEBHOOK_SECRET`.
+5. Without `STRIPE_SECRET_KEY` set, checkout/subscribe endpoints return a
+   clearly-fake placeholder URL instead of erroring, so you can deploy and
+   test everything else first.
+
+## Admin dashboard
+
+Visit `https://<your-app>/admin.html`, enter the `ADMIN_TOKEN` you set, and
+you'll see open gigs, matches, and payment status. It's a static page hitting
+a token-protected API route (`/api/admin/overview`) — it isn't linked from
+the public site anywhere, but isn't meant to be a substitute for real auth
+if this grows past an early pilot you're personally watching.
+
+## Business-logic decisions I made that are worth you double-checking
+
+The brief said pricing "must match exactly," so I want to flag two spots
+where the brief was slightly ambiguous and I picked a specific, documented
+interpretation rather than guessing silently — both are called out in code
+comments too (`lib/referrals.js`, `lib/matching.js`):
+
+1. **Founding Member limit** — I read "first 100 venues/musicians" as 100
+   slots for *each* type (100 venues + 100 musicians), not one shared pool
+   of 100 total. More generous, and the brief's wording was ambiguous either
+   way.
+2. **Referral bonus shape** — "one extra free fill (venues) or one free
+   month of Growth (either side)" doesn't fully specify which reward applies
+   to which pairing. I implemented: venue referrers/referees get a free-fill
+   credit; musician referrers/referees get a free month of the Musician Pro
+   Bundle (their closest equivalent to Growth, since Growth itself is a
+   venue-only tier). Worth 5 minutes to confirm this is what you meant
+   before it's live.
+
+## What's intentionally NOT built here (per the brief)
+
+Concierge AI (marketing/auto-book), vibe matching, standby bench, and the
+rest of the "Roadmap" section — all explicitly deferred until the core
+booking loop is proven, per `PROJECT_BRIEF.md`.
