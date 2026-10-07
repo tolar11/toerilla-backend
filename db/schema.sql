@@ -129,3 +129,26 @@ CREATE INDEX IF NOT EXISTS idx_gigs_venue ON gigs(venue_id);
 CREATE INDEX IF NOT EXISTS idx_musicians_available ON musicians(available);
 CREATE INDEX IF NOT EXISTS idx_notifications_gig ON notifications_log(gig_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_musician_status ON notifications_log(musician_id, status);
+
+-- Accounts: one login (username + email + password) per venue or musician.
+-- Passwords are never stored — only a salted scrypt hash. Deleting a venue or
+-- musician row also deletes its account (ON DELETE CASCADE).
+CREATE TABLE IF NOT EXISTS accounts (
+  id SERIAL PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('venue', 'musician')),
+  venue_id INTEGER REFERENCES venues(id) ON DELETE CASCADE,
+  musician_id INTEGER REFERENCES musicians(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  username TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  reset_token_hash TEXT,              -- sha256 of the emailed reset token (the token itself is never stored)
+  reset_expires TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (
+    (role = 'venue' AND venue_id IS NOT NULL AND musician_id IS NULL) OR
+    (role = 'musician' AND musician_id IS NOT NULL AND venue_id IS NULL)
+  )
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email ON accounts (LOWER(email));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_username ON accounts (LOWER(username));
+CREATE INDEX IF NOT EXISTS idx_accounts_reset ON accounts (reset_token_hash);
