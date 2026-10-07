@@ -133,6 +133,7 @@ app.post(
 // --- Venue posts an open gig (triggers matching + notifications) ---
 app.post(
   '/api/gigs',
+  requireAdmin, // venues don't self-serve yet; gigs are posted from the admin page
   asyncRoute(async (req, res) => {
     const body = req.body;
     const { rows: venueRows } = await query('SELECT * FROM venues WHERE id = $1', [body.venue_id]);
@@ -172,6 +173,7 @@ app.post(
 // --- Musician claims a gig (first to claim wins) ---
 app.post(
   '/api/gigs/:id/claim',
+  requireAdmin, // real claims arrive by SMS (/api/sms/inbound); this HTTP route is for admin testing
   asyncRoute(async (req, res) => {
     const gigId = Number(req.params.id);
     const musicianId = req.body.musician_id;
@@ -199,6 +201,7 @@ app.post(
 // --- List / health (unchanged from Phase 1) ---
 app.get(
   '/api/gigs',
+  requireAdmin,
   asyncRoute(async (_req, res) => {
     const { rows } = await query('SELECT * FROM gigs ORDER BY created_at DESC');
     res.status(200).json(rows);
@@ -206,6 +209,7 @@ app.get(
 );
 app.get(
   '/api/venues',
+  requireAdmin, // these contain phone numbers, so they are not public
   asyncRoute(async (_req, res) => {
     const { rows } = await query('SELECT * FROM venues ORDER BY created_at DESC');
     res.status(200).json(rows);
@@ -213,6 +217,7 @@ app.get(
 );
 app.get(
   '/api/musicians',
+  requireAdmin,
   asyncRoute(async (_req, res) => {
     const { rows } = await query('SELECT * FROM musicians ORDER BY created_at DESC');
     res.status(200).json(rows);
@@ -318,7 +323,21 @@ app.get(
         (SELECT COUNT(*) FROM gigs WHERE status = 'filled') AS filled_gigs,
         (SELECT COUNT(*) FROM gigs WHERE payment_status = 'pending') AS pending_payments
     `);
-    res.status(200).json({ counts: counts[0], gigs });
+    const { rows: venues } = await query(`
+      SELECT id, name, contact_name, contact_phone, city, state, founding_member, gigs_completed, subscription_tier, created_at
+      FROM venues ORDER BY created_at DESC LIMIT 500
+    `);
+    const { rows: musicians } = await query(`
+      SELECT id, name, contact_name, contact_phone, city, state, genres, instruments, reach, travel_radius_miles, available, founding_member, created_at
+      FROM musicians ORDER BY created_at DESC LIMIT 500
+    `);
+    const { rows: notifications } = await query(`
+      SELECT n.id, n.gig_id, n.message, n.channel, n.status, n.sent_at, m.name AS musician_name
+      FROM notifications_log n
+      LEFT JOIN musicians m ON m.id = n.musician_id
+      ORDER BY n.sent_at DESC LIMIT 25
+    `);
+    res.status(200).json({ counts: counts[0], gigs, venues, musicians, notifications });
   })
 );
 
