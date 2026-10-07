@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Toe-Rilla Admin</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #0f1115; color: #e8e8e8; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  .sub { color: #9aa0a8; font-size: 13px; margin-bottom: 20px; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stat { background: #1a1d23; border: 1px solid #2a2e37; border-radius: 10px; padding: 12px 16px; min-width: 110px; }
+  .stat .n { font-size: 22px; font-weight: 700; }
+  .stat .l { font-size: 11px; color: #9aa0a8; text-transform: uppercase; letter-spacing: .04em; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #23262e; vertical-align: top; }
+  th { color: #9aa0a8; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .open { background: #2a3a2a; color: #8fe08f; }
+  .filled { background: #2a2f3a; color: #8fb3e0; }
+  .cancelled { background: #3a2a2a; color: #e08f8f; }
+  .pay-paid { color: #8fe08f; }
+  .pay-pending { color: #e0c88f; }
+  .pay-free { color: #9aa0a8; }
+  #loginBox, #err { max-width: 420px; }
+  input, select { background: #1a1d23; border: 1px solid #2a2e37; color: #e8e8e8; padding: 8px 10px; border-radius: 8px; width: 100%; margin-bottom: 8px; font: inherit; }
+  button { background: #3a6df0; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font: inherit; font-weight: 600; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  a { color: #8fb3e0; }
+  .card { background: #1a1d23; border: 1px solid #2a2e37; border-radius: 10px; padding: 16px; max-width: 760px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 12px; }
+  label.f { display: block; font-size: 12px; color: #9aa0a8; margin-bottom: 3px; }
+  .genres { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .genres label { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid #2a2e37; border-radius: 999px; font-size: 13px; cursor: pointer; }
+  .genres input { width: auto; margin: 0; }
+  .result { margin-top: 14px; padding: 12px; border-radius: 8px; background: #14171c; border: 1px solid #2a2e37; font-size: 13px; }
+  .result.bad { border-color: #6a3a3a; color: #e08f8f; }
+  .note { color: #9aa0a8; font-size: 12px; margin-top: 6px; }
+  .msgcell { max-width: 520px; color: #c9ccd2; }
+</style>
+</head>
+<body>
+  <h1>Toe-Rilla Admin</h1>
+  <div class="sub">Internal view: sign-ups, gigs, matches, payment status. Not linked from the public site.</div>
+
+  <div id="loginBox">
+    <p>Enter the admin token to continue:</p>
+    <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" />
+    <button id="loginBtn">View dashboard</button>
+    <p id="err" style="color:#e08f8f;"></p>
+  </div>
+
+  <div id="dash" style="display:none;">
+    <div class="stats" id="stats"></div>
+
+    <h2>Post a gig</h2>
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label class="f" for="gVenue">Venue</label>
+          <select id="gVenue"></select>
+        </div>
+        <div>
+          <label class="f" for="gDate">Date</label>
+          <input id="gDate" type="date" />
+        </div>
+        <div>
+          <label class="f" for="gTime">Time (optional)</label>
+          <input id="gTime" type="time" />
+        </div>
+        <div>
+          <label class="f" for="gBudget">Budget in $ (optional)</label>
+          <input id="gBudget" type="number" min="0" step="1" placeholder="e.g. 250" />
+        </div>
+        <div>
+          <label class="f" for="gUrgency">Urgency</label>
+          <select id="gUrgency">
+            <option value="planned">Planned</option>
+            <option value="urgent">Urgent (tonight / this week)</option>
+          </select>
+        </div>
+      </div>
+      <label class="f">Genre needed (pick one or more)</label>
+      <div class="genres" id="gGenres"></div>
+      <button id="postGigBtn">Post gig and find matches</button>
+      <div class="note">Matching works by genre and by city/state against each musician's travel setting. With no Twilio account connected, the texts are only logged (see "Recent messages" below), not sent.</div>
+      <div id="gigResult"></div>
+    </div>
+
+    <h2>Gigs</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Gig #</th><th>Venue</th><th>Date</th><th>Genre</th><th>Urgency</th><th>Status</th><th>Musician</th><th>Payment</th><th>Amount</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <h2>Recent messages (sent or logged)</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>When</th><th>Gig #</th><th>To</th><th>Channel</th><th>Message</th></tr></thead>
+        <tbody id="notes"></tbody>
+      </table>
+    </div>
+
+    <h2>Venues</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Phone / IG</th><th>City</th><th>Plan</th><th>Founding</th><th>Joined</th></tr></thead>
+        <tbody id="venueRows"></tbody>
+      </table>
+    </div>
+
+    <h2>Musicians</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Phone / IG</th><th>City</th><th>Genres</th><th>Travel</th><th>Founding</th><th>Joined</th></tr></thead>
+        <tbody id="musicianRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+  var GENRES = ['Acoustic', 'Blues', 'Country', 'Covers', 'Funk', 'Jazz', 'Latin', 'Originals', 'Pop', 'R&B', 'Reggae', 'Rock'];
+  var token = '';
+
+  // Sign-up fields come from the public internet, so everything shown here is escaped.
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function $(id) { return document.getElementById(id); }
+  function tokenKey() { return 'toerilla_admin_token'; }
+  function fmtDate(d) { try { return new Date(d).toLocaleString(); } catch (e) { return ''; } }
+  function travelLabel(m) {
+    if (m.reach === 'nationwide') return 'Anywhere';
+    return (m.travel_radius_miles || 25) + ' mi (' + (m.reach === 'local' ? 'my city' : 'my state') + ')';
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ Authorization: 'Bearer ' + token }, opts.headers || {});
+    const res = await fetch(path, opts);
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    return { ok: res.ok, status: res.status, data: data };
+  }
+
+  async function login() {
+    token = $('tokenInput').value.trim();
+    const ok = await load();
+    if (ok) {
+      try { sessionStorage.setItem(tokenKey(), token); } catch (e) {} // this tab only
+      $('loginBox').style.display = 'none';
+      $('dash').style.display = 'block';
+    }
+  }
+
+  async function load() {
+    $('err').textContent = '';
+    try {
+      const r = await api('/api/admin/overview');
+      if (!r.ok) {
+        $('err').textContent = r.status === 401 ? 'Wrong token.' : 'Error loading data.';
+        return false;
+      }
+      render(r.data);
+      return true;
+    } catch (e) {
+      $('err').textContent = 'Could not reach the API.';
+      return false;
+    }
+  }
+
+  function render(data) {
+    const c = data.counts;
+    $('stats').innerHTML =
+      '<div class="stat"><div class="n">' + esc(c.venue_count) + '</div><div class="l">Venues</div></div>' +
+      '<div class="stat"><div class="n">' + esc(c.musician_count) + '</div><div class="l">Musicians</div></div>' +
+      '<div class="stat"><div class="n">' + esc(c.open_gigs) + '</div><div class="l">Open Gigs</div></div>' +
+      '<div class="stat"><div class="n">' + esc(c.filled_gigs) + '</div><div class="l">Filled Gigs</div></div>' +
+      '<div class="stat"><div class="n">' + esc(c.pending_payments) + '</div><div class="l">Pending Payments</div></div>';
+
+    // venue dropdown (keep the current selection if there is one)
+    const sel = $('gVenue');
+    const prev = sel.value;
+    sel.innerHTML = data.venues.length
+      ? data.venues.map(function (v) {
+          return '<option value="' + esc(v.id) + '">' + esc(v.name) + ' (' + esc(v.city) + ', ' + esc(v.state) + ')</option>';
+        }).join('')
+      : '<option value="">No venues yet</option>';
+    if (prev) sel.value = prev;
+
+    $('rows').innerHTML = data.gigs.length ? data.gigs.map(function (g) {
+      const link = g.stripe_checkout_url && /^https:\/\//.test(g.stripe_checkout_url)
+        ? ' (<a href="' + esc(g.stripe_checkout_url) + '" target="_blank" rel="noopener">link</a>)' : '';
+      return '<tr>' +
+        '<td>#' + esc(g.id) + '</td>' +
+        '<td>' + esc(g.venue_name) + '</td>' +
+        '<td>' + esc(g.gig_date) + (g.gig_time ? ' ' + esc(g.gig_time) : '') + '</td>' +
+        '<td>' + esc(g.genre_needed) + '</td>' +
+        '<td>' + esc(g.urgency) + '</td>' +
+        '<td><span class="badge ' + esc(g.status) + '">' + esc(g.status) + '</span></td>' +
+        '<td>' + (g.musician_name ? esc(g.musician_name) : '&mdash;') + '</td>' +
+        '<td class="pay-' + esc(g.payment_status) + '">' + esc(g.payment_status) + link + '</td>' +
+        '<td>' + (g.amount_due_cents != null ? '$' + (g.amount_due_cents / 100).toFixed(2) : '&mdash;') + '</td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="9">No gigs yet.</td></tr>';
+
+    $('notes').innerHTML = data.notifications.length ? data.notifications.map(function (n) {
+      return '<tr><td>' + esc(fmtDate(n.sent_at)) + '</td><td>#' + esc(n.gig_id) + '</td><td>' + esc(n.musician_name) +
+        '</td><td>' + esc(n.channel) + '</td><td class="msgcell">' + esc(n.message) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5">No messages yet.</td></tr>';
+
+    $('venueRows').innerHTML = data.venues.length ? data.venues.map(function (v) {
+      return '<tr><td>' + esc(v.id) + '</td><td>' + esc(v.name) + '</td><td>' + esc(v.contact_name) + '</td><td>' + esc(v.contact_phone) +
+        '</td><td>' + esc(v.city) + ', ' + esc(v.state) + '</td><td>' + esc(v.subscription_tier) + '</td><td>' +
+        (v.founding_member ? 'Yes' : '') + '</td><td>' + esc(fmtDate(v.created_at)) + '</td></tr>';
+    }).join('') : '<tr><td colspan="8">No venues yet.</td></tr>';
+
+    $('musicianRows').innerHTML = data.musicians.length ? data.musicians.map(function (m) {
+      return '<tr><td>' + esc(m.id) + '</td><td>' + esc(m.name) + '</td><td>' + esc(m.contact_name) + '</td><td>' + esc(m.contact_phone) +
+        '</td><td>' + esc(m.city) + ', ' + esc(m.state) + '</td><td>' + esc(m.genres) + '</td><td>' + esc(travelLabel(m)) +
+        '</td><td>' + (m.founding_member ? 'Yes' : '') + '</td><td>' + esc(fmtDate(m.created_at)) + '</td></tr>';
+    }).join('') : '<tr><td colspan="9">No musicians yet.</td></tr>';
+  }
+
+  // ---- Post a gig ----
+  $('gGenres').innerHTML = GENRES.map(function (g) {
+    return '<label><input type="checkbox" name="gg" value="' + esc(g.toLowerCase()) + '"> ' + esc(g) + '</label>';
+  }).join('');
+
+  function showResult(html, bad) {
+    $('gigResult').innerHTML = '<div class="result' + (bad ? ' bad' : '') + '">' + html + '</div>';
+  }
+
+  async function postGig() {
+    const venueId = $('gVenue').value;
+    const date = $('gDate').value;
+    const genres = Array.prototype.map.call(document.querySelectorAll('input[name="gg"]:checked'), function (c) { return c.value; });
+    if (!venueId) return showResult('Pick a venue first. A venue has to sign up on the landing page before it can post a gig.', true);
+    if (!date) return showResult('Pick a date.', true);
+    if (!genres.length) return showResult('Pick at least one genre.', true);
+
+    const btn = $('postGigBtn');
+    btn.disabled = true;
+    try {
+      const r = await api('/api/gigs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venue_id: Number(venueId),
+          gig_date: date,
+          gig_time: $('gTime').value || null,
+          genre_needed: genres.join(','),
+          budget: $('gBudget').value ? Number($('gBudget').value) : null,
+          urgency: $('gUrgency').value
+        })
+      });
+      if (!r.ok) return showResult('Could not post the gig: ' + esc((r.data && r.data.error) || r.status), true);
+
+      const gig = r.data.gig;
+      const ms = r.data.matches || [];
+      let html = '<strong>Gig #' + esc(gig.id) + ' posted.</strong> ';
+      if (!ms.length) {
+        html += 'No musicians matched yet (none share the genre and are within reach of this venue).';
+      } else {
+        html += esc(ms.length) + ' musician' + (ms.length === 1 ? '' : 's') + ' matched and ' + (ms.length === 1 ? 'was' : 'were') + ' sent the text:' +
+          '<ul>' + ms.map(function (m) {
+            return '<li>' + esc(m.name) + ' (' + esc(m.genres) + ') ' +
+              '<button class="small" data-gig="' + esc(gig.id) + '" data-musician="' + esc(m.id) + '">Test: claim as this musician</button></li>';
+          }).join('') + '</ul>' +
+          '<div class="note">The claim button does what a musician texting YES will do: first one wins, everyone else is told it filled, and the price is worked out from the pricing rules.</div>';
+      }
+      showResult(html, false);
+      await load();
+    } catch (e) {
+      showResult('Could not reach the API.', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function claim(gigId, musicianId, btn) {
+    btn.disabled = true;
+    const r = await api('/api/gigs/' + encodeURIComponent(gigId) + '/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ musician_id: Number(musicianId) })
+    });
+    if (r.ok) {
+      const p = r.data.pricing || {};
+      const amt = p.amountDueCents != null ? '$' + (p.amountDueCents / 100).toFixed(2) : 'n/a';
+      showResult('<strong>Gig #' + esc(gigId) + ' filled</strong> by ' + esc(r.data.musician && r.data.musician.name) + '. Venue owes ' +
+        esc(amt) + (p.reason ? ' (' + esc(p.reason) + ')' : '') + '.', false);
+    } else {
+      showResult(esc((r.data && r.data.error) || 'Claim failed'), true);
+    }
+    await load();
+  }
+
+  $('gigResult').addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-gig]');
+    if (b) claim(b.getAttribute('data-gig'), b.getAttribute('data-musician'), b);
+  });
+  $('postGigBtn').addEventListener('click', postGig);
+  $('loginBtn').addEventListener('click', login);
+  $('tokenInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+
+  // Auto-login if a token was already entered in this tab.
+  try {
+    const saved = sessionStorage.getItem(tokenKey());
+    if (saved) { $('tokenInput').value = saved; login(); }
+  } catch (e) {}
+</script>
+</body>
+</html>
