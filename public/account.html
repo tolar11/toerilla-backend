@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Toe-Rilla Gig Network: Your Account</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    --bg: #0e1a2e; --card: #15243b; --line: #263a58; --text: #eef1f6; --muted: #9fb0c8;
+    --accent: #e8a33a; --accent-ink: #1a1304; --good: #7fd89a; --warn: #f0c36a; --bad: #f08a8a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 -apple-system, Segoe UI, Roboto, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 60px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .brand { font-weight: 800; letter-spacing: .02em; }
+  .brand span { color: var(--accent); }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0f1d33; color: var(--text); font: inherit; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 11px 16px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+  button.small { padding: 6px 12px; font-size: 14px; }
+  button:disabled { opacity: .55; cursor: default; }
+  .link { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 600; text-decoration: underline; cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+  .chips label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; background: #0f1d33; font-size: 14px; }
+  .chips input { width: auto; margin: 0; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; background: #0f1d33; border: 1px solid var(--line); }
+  .msg.good { border-color: #2f6b45; color: var(--good); }
+  .msg.bad { border-color: #7a3a3a; color: var(--bad); }
+  .note { background: #1b2c47; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; color: #dbe6f7; }
+  .gig { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-top: 10px; background: #0f1d33; }
+  .gig .top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .b-open { background: #234a33; color: var(--good); }
+  .b-filled { background: #243d63; color: #9cc3ff; }
+  .b-cancelled { background: #4a2a2a; color: var(--bad); }
+  .hidden { display: none !important; }
+  .tabs { display: flex; gap: 14px; margin-bottom: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">TOE-<span>RILLA</span> GIG NETWORK</div>
+    <div id="who" class="muted hidden"></div>
+  </header>
+
+  <!-- ===== Logged-out views ===== -->
+  <section id="viewAuth" class="hidden">
+    <div id="paneLogin" class="card">
+      <h1>Log in</h1>
+      <p class="muted">Use the username (or email) and password you chose when you joined.</p>
+      <form id="loginForm">
+        <label class="f" for="liUser">Username or email</label>
+        <input id="liUser" autocomplete="username" autocapitalize="none" required />
+        <label class="f" for="liPass">Password</label>
+        <input id="liPass" type="password" autocomplete="current-password" required />
+        <p><button type="submit" id="liBtn">Log in</button></p>
+        <div id="liMsg"></div>
+      </form>
+      <p class="muted"><button class="link" id="toForgot" type="button">Forgot your password?</button></p>
+      <p class="muted">New here? Join the early list at <a href="https://toerillagignetwork.com">toerillagignetwork.com</a>.</p>
+    </div>
+
+    <div id="paneForgot" class="card hidden">
+      <h1>Reset your password</h1>
+      <p class="muted">Enter the email you signed up with and we'll send you a link.</p>
+      <form id="forgotForm">
+        <label class="f" for="fgEmail">Email</label>
+        <input id="fgEmail" type="email" autocomplete="email" required />
+        <p><button type="submit" id="fgBtn">Send reset link</button></p>
+        <div id="fgMsg"></div>
+      </form>
+      <p class="muted"><button class="link" id="toLogin1" type="button">Back to log in</button></p>
+    </div>
+
+    <div id="paneReset" class="card hidden">
+      <h1>Choose a new password</h1>
+      <form id="resetForm">
+        <label class="f" for="rsPass">New password (8+ characters)</label>
+        <input id="rsPass" type="password" autocomplete="new-password" required minlength="8" />
+        <label class="f" for="rsPass2">Type it again</label>
+        <input id="rsPass2" type="password" autocomplete="new-password" required minlength="8" />
+        <p><button type="submit" id="rsBtn">Save new password</button></p>
+        <div id="rsMsg"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== Logged-in view ===== -->
+  <section id="viewApp" class="hidden"></section>
+</div>
+
+<script>
+(function () {
+  var state = { me: null, timer: null };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  function genreLabel(g) { return g === 'r&b' ? 'R&B' : cap(g); }
+
+  async function api(path, body, method) {
+    var opts = { method: method || (body ? 'POST' : 'GET'), headers: {} };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    var res = await fetch(path, opts);
+    var data = null;
+    try { data = await res.json(); } catch (e) {}
+    return { ok: res.ok, status: res.status, data: data || {} };
+  }
+  function show(el, text, kind) {
+    el.innerHTML = text ? '<div class="msg ' + (kind || '') + '">' + esc(text) + '</div>' : '';
+  }
+  function fmtDate(d) {
+    if (!d) return '';
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    var dt = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(d);
+    return isNaN(dt) ? d : dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function fmtTime(t) {
+    var m = /^(\d{2}):(\d{2})/.exec(t || '');
+    if (!m) return '';
+    var h = Number(m[1]);
+    return (h % 12 || 12) + ':' + m[2] + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function money(cents) { return '$' + (cents / 100).toFixed(2); }
+
+  // ---------- logged-out ----------
+  function showPane(name) {
+    ['Login', 'Forgot', 'Reset'].forEach(function (p) { $('pane' + p).classList.toggle('hidden', p !== name); });
+  }
+  function showAuth(pane) {
+    stopTimer();
+    $('viewApp').classList.add('hidden');
+    $('who').classList.add('hidden');
+    $('viewAuth').classList.remove('hidden');
+    showPane(pane || 'Login');
+  }
+  $('toForgot').onclick = function () { showPane('Forgot'); };
+  $('toLogin1').onclick = function () { showPane('Login'); };
+
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = $('liBtn'); btn.disabled = true; show($('liMsg'), '');
+    var r = await api('/api/auth/login', { identifier: $('liUser').value.trim(), password: $('liPass').value });
+    btn.disabled = false;
+    if (!r.ok) return show($('liMsg'), r.data.error || 'Could not log in.', 'bad');
+    $('liPass').value = '';
+    await loadApp();
+  });
+
+  $('forgotForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = $('fgBtn'); btn.disabled = true;
+    var r = await api('/api/auth/forgot', { email: $('fgEmail').value.trim() });
+    btn.disabled = false;
+    show($('fgMsg'), r.ok ? 'If that email has an account, a reset link is on its way. Check your inbox (and spam).' : (r.data.error || 'Something went wrong.'), r.ok ? 'good' : 'bad');
+  });
+
+  $('resetForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if ($('rsPass').value !== $('rsPass2').value) return show($('rsMsg'), 'The two passwords don\'t match.', 'bad');
+    var token = (location.hash.match(/reset=([a-f0-9]+)/) || [])[1] || '';
+    var btn = $('rsBtn'); btn.disabled = true;
+    var r = await api('/api/auth/reset', { token: token, password: $('rsPass').value });
+    btn.disabled = false;
+    if (!r.ok) return show($('rsMsg'), r.data.error || 'Could not reset the password.', 'bad');
+    history.replaceState(null, '', location.pathname);
+    $('rsPass').value = ''; $('rsPass2').value = '';
+    showPane('Login');
+    show($('liMsg'), 'Password updated. Log in with your new password.', 'good');
+  });
+
+  // ---------- logged-in ----------
+  function stopTimer() { if (state.timer) { clearInterval(state.timer); state.timer = null; } }
+
+  async function loadApp() {
+    var r = await api('/api/auth/me');
+    if (!r.ok) { state.me = null; return showAuth('Login'); }
+    state.me = r.data;
+    $('viewAuth').classList.add('hidden');
+    $('viewApp').classList.remove('hidden');
+    $('who').classList.remove('hidden');
+    $('who').innerHTML = esc(state.me.username) + ' &middot; <button class="link" id="logoutBtn" type="button">Log out</button>';
+    $('logoutBtn').onclick = async function () { await api('/api/auth/logout', {}); state.me = null; showAuth('Login'); };
+    renderShell();
+    await refreshGigs();
+    stopTimer();
+    state.timer = setInterval(function () { if (!document.hidden) refreshGigs(); }, 30000);
+  }
+
+  function genreChips(selected, name) {
+    var sel = (selected || '').split(',').map(function (s) { return s.trim(); });
+    return '<div class="chips">' + state.me.genres.map(function (g) {
+      return '<label><input type="checkbox" name="' + name + '" value="' + esc(g) + '"' + (sel.indexOf(g) >= 0 ? ' checked' : '') + '> ' + esc(genreLabel(g)) + '</label>';
+    }).join('') + '</div>';
+  }
+  function checked(name) {
+    return Array.prototype.map.call(document.querySelectorAll('#viewApp input[name="' + name + '"]:checked'), function (c) { return c.value; });
+  }
+  function travelOptions(p) {
+    var opts = [[25, '0-25 miles'], [50, '25-50 miles'], [100, '50-100 miles'], [200, '100-200 miles'], ['nationwide', 'Anywhere in the country']];
+    var cur = p.reach === 'nationwide' ? 'nationwide' : (function () { for (var i = 0; i < 4; i++) if (p.travel_radius_miles <= opts[i][0]) return opts[i][0]; return 200; })();
+    return opts.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+  }
+  function travelBody(v) { return v === 'nationwide' ? { reach: 'nationwide' } : { reach: 'local', travel_radius_miles: Number(v) }; }
+
+  function profileCard(p, isMusician) {
+    return '<div class="card"><h2>Your profile</h2><form id="profForm">' +
+      '<label class="f" for="pName">' + (isMusician ? 'Band / artist name' : 'Venue name') + '</label><input id="pName" value="' + esc(p.name) + '" required />' +
+      '<div class="row"><div><label class="f" for="pContact">Your name</label><input id="pContact" value="' + esc(p.contact_name) + '" /></div>' +
+      '<div><label class="f" for="pPhone">Phone (for gig texts)</label><input id="pPhone" value="' + esc(p.contact_phone) + '" required /></div></div>' +
+      '<div class="row"><div><label class="f" for="pCity">City</label><input id="pCity" value="' + esc(p.city) + '" required /></div>' +
+      '<div><label class="f" for="pState">State</label><input id="pState" value="' + esc(p.state) + '" required /></div></div>' +
+      (isMusician
+        ? '<label class="f">Genres you play</label>' + genreChips(p.genres, 'pgenre') +
+          '<label class="f" for="pInst">Instruments (optional)</label><input id="pInst" value="' + esc(p.instruments) + '" />' +
+          '<label class="f" for="pTravel">How far will you travel?</label><select id="pTravel">' + travelOptions(p) + '</select>' +
+          '<div class="row"><div><label class="f" for="pMin">Lowest rate, $ (optional)</label><input id="pMin" type="number" min="0" value="' + esc(p.rate_min) + '" /></div>' +
+          '<div><label class="f" for="pMax">Usual rate, $ (optional)</label><input id="pMax" type="number" min="0" value="' + esc(p.rate_max) + '" /></div></div>' +
+          '<label class="chips" style="display:flex;margin-top:10px"><label><input type="checkbox" id="pAvail"' + (p.available ? ' checked' : '') + '> I\'m available for gigs right now</label></label>'
+        : '') +
+      '<p><button type="submit" id="profBtn">Save profile</button></p><div id="profMsg"></div></form></div>';
+  }
+  function passwordCard() {
+    return '<div class="card"><h2>Account</h2><p class="muted">Username: <b>' + esc(state.me.username) + '</b> &middot; Email: <b>' + esc(state.me.email) + '</b></p>' +
+      '<form id="pwForm"><label class="f" for="pwCur">Current password</label><input id="pwCur" type="password" autocomplete="current-password" required />' +
+      '<label class="f" for="pwNew">New password (8+ characters)</label><input id="pwNew" type="password" autocomplete="new-password" required minlength="8" />' +
+      '<p><button type="submit" class="ghost" id="pwBtn">Change password</button></p><div id="pwMsg"></div></form></div>';
+  }
+
+  function renderShell() {
+    var me = state.me, p = me.profile, isM = me.role === 'musician', html;
+    if (isM) {
+      html = '<h1>Hi, ' + esc(p.name) + '</h1><p class="muted">Gigs that match your genres and travel range show up here. First to claim wins.</p>' +
+        '<div class="card"><h2>Open invitations</h2><div id="invites" class="muted">Loading&hellip;</div></div>' +
+        '<div class="card"><h2>Your booked gigs</h2><div id="booked" class="muted">Loading&hellip;</div></div>' +
+        profileCard(p, true) + passwordCard();
+    } else {
+      var today = new Date(); today = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+      html = '<h1>' + esc(p.name) + '</h1><div class="note" id="priceNote">' + esc(me.pricing_note) + '</div>' +
+        '<div class="card"><h2>Post a gig</h2><form id="gigForm">' +
+        '<div class="row"><div><label class="f" for="gDate">Date</label><input id="gDate" type="date" min="' + today + '" required /></div>' +
+        '<div><label class="f" for="gTime">Start time (optional)</label><input id="gTime" type="time" /></div></div>' +
+        '<label class="f">Genre you need (pick one or more)</label>' + genreChips('', 'ggenre') +
+        '<div class="row"><div><label class="f" for="gBudget">Budget, $ (optional)</label><input id="gBudget" type="number" min="0" step="1" /></div>' +
+        '<div><label class="f" for="gUrg">How soon?</label><select id="gUrg"><option value="planned">Planned</option><option value="urgent">Urgent (tonight or this week)</option></select></div></div>' +
+        '<p><button type="submit" id="gigBtn">Post gig and notify musicians</button></p><div id="gigMsg"></div></form></div>' +
+        '<div class="card"><h2>Your gigs</h2><div id="gigs" class="muted">Loading&hellip;</div></div>' +
+        profileCard(p, false) + passwordCard();
+    }
+    $('viewApp').innerHTML = html;
+    wireForms();
+  }
+
+  function wireForms() {
+    var isM = state.me.role === 'musician';
+
+    $('profForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var body = { name: $('pName').value, contact_name: $('pContact').value, contact_phone: $('pPhone').value, city: $('pCity').value, state: $('pState').value };
+      if (isM) {
+        body.genres = checked('pgenre'); body.instruments = $('pInst').value;
+        Object.assign(body, travelBody($('pTravel').value));
+        body.rate_min = $('pMin').value; body.rate_max = $('pMax').value; body.available = $('pAvail').checked;
+      }
+      $('profBtn').disabled = true;
+      var r = await api('/api/me/profile', body);
+      $('profBtn').disabled = false;
+      show($('profMsg'), r.ok ? 'Saved.' : (r.data.error || 'Could not save.'), r.ok ? 'good' : 'bad');
+    });
+
+    $('pwForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      $('pwBtn').disabled = true;
+      var r = await api('/api/me/password', { current_password: $('pwCur').value, new_password: $('pwNew').value });
+      $('pwBtn').disabled = false;
+      if (r.ok) { $('pwCur').value = ''; $('pwNew').value = ''; }
+      show($('pwMsg'), r.ok ? 'Password changed.' : (r.data.error || 'Could not change the password.'), r.ok ? 'good' : 'bad');
+    });
+
+    if (!isM) {
+      $('gigForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var genres = checked('ggenre');
+        if (!genres.length) return show($('gigMsg'), 'Pick at least one genre.', 'bad');
+        $('gigBtn').disabled = true;
+        var r = await api('/api/me/gigs', { gig_date: $('gDate').value, gig_time: $('gTime').value || null, genres: genres, budget: $('gBudget').value, urgency: $('gUrg').value });
+        $('gigBtn').disabled = false;
+        if (!r.ok) return show($('gigMsg'), r.data.error || 'Could not post the gig.', 'bad');
+        var n = r.data.musicians_notified;
+        show($('gigMsg'), n ? 'Posted! ' + n + ' musician' + (n === 1 ? ' was' : 's were') + ' notified. First to say yes gets the gig.' : 'Posted. No musicians match yet, but we\'ll notify new matches as they join.', 'good');
+        $('gigForm').reset();
+        refreshGigs();
+      });
+    }
+  }
+
+  async function refreshGigs() {
+    if (!state.me) return;
+    var r = await api('/api/me/gigs');
+    if (r.status === 401) { state.me = null; return showAuth('Login'); }
+    if (!r.ok) return;
+    if (state.me.role === 'venue') {
+      var m = await api('/api/auth/me');
+      if (m.ok && $('priceNote')) $('priceNote').textContent = m.data.pricing_note;
+      renderVenueGigs(r.data.gigs);
+    } else {
+      renderInvites(r.data.invitations); renderBooked(r.data.booked);
+    }
+  }
+
+  function gigLine(g) { return esc(fmtDate(g.gig_date)) + (g.gig_time ? ' at ' + esc(fmtTime(g.gig_time)) : ''); }
+
+  function renderVenueGigs(gigs) {
+    var el = $('gigs');
+    if (!el) return;
+    if (!gigs.length) { el.innerHTML = 'No gigs yet. Post your first one above. It\'s free.'; return; }
+    el.innerHTML = gigs.map(function (g) {
+      var detail = '';
+      if (g.status === 'filled') {
+        detail += '<div>Booked: <b>' + esc(g.musician_name) + '</b> &middot; ' + esc(g.musician_phone) + '</div>';
+        if (g.payment_status === 'pending') {
+          var link = g.stripe_checkout_url && /^https:\/\//.test(g.stripe_checkout_url) && g.stripe_checkout_url.indexOf('#fake') < 0
+            ? ' <a href="' + esc(g.stripe_checkout_url) + '" target="_blank" rel="noopener">Pay now</a>' : ' (payment link coming soon)';
+          detail += '<div>Commission due: <b>' + money(g.amount_due_cents) + '</b>' + link + '</div>';
+        } else if (g.payment_status === 'paid') {
+          detail += '<div>Commission: <b>' + money(g.amount_due_cents) + '</b> paid</div>';
+        } else if (g.payment_status === 'free') {
+          detail += '<div>Commission: <b>$0.00</b>' + (g.pricing_reason ? ' (' + esc(g.pricing_reason) + ')' : '') + '</div>';
+        }
+      }
+      return '<div class="gig"><div class="top"><div><b>' + gigLine(g) + '</b><div class="muted">' + esc(g.genre_needed.split(',').map(genreLabel).join(', ')) +
+        (g.budget ? ' &middot; $' + esc(g.budget) : '') + (g.urgency === 'urgent' ? ' &middot; urgent' : '') + '</div></div>' +
+        '<div><span class="badge b-' + esc(g.status) + '">' + esc(g.status) + '</span></div></div>' + detail +
+        (g.status === 'open' ? '<p><button class="ghost small" data-cancel="' + esc(g.id) + '">Cancel this gig</button></p>' : '') + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(el.querySelectorAll('[data-cancel]'), function (b) {
+      b.onclick = async function () {
+        if (!confirm('Cancel this gig? Musicians who were notified will no longer be able to claim it.')) return;
+        b.disabled = true;
+        var r = await api('/api/me/gigs/' + b.getAttribute('data-cancel') + '/cancel', {});
+        if (!r.ok) alert(r.data.error || 'Could not cancel.');
+        refreshGigs();
+      };
+    });
+  }
+
+  function renderInvites(list) {
+    var el = $('invites');
+    if (!el) return;
+    if (!list.length) { el.innerHTML = 'No open invitations right now. We\'ll text you when a gig matches.'; return; }
+    el.innerHTML = list.map(function (g) {
+      return '<div class="gig"><div class="top"><div><b>' + esc(g.venue_name) + '</b> &middot; ' + esc(g.city) + ', ' + esc(g.state) +
+        '<div>' + gigLine(g) + '</div><div class="muted">' + esc(g.genre_needed.split(',').map(genreLabel).join(', ')) + (g.budget ? ' &middot; $' + esc(g.budget) : ' &middot; budget TBD') +
+        (g.urgency === 'urgent' ? ' &middot; urgent' : '') + '</div></div>' +
+        '<div><button data-claim="' + esc(g.id) + '">Claim this gig</button></div></div></div>';
+    }).join('');
+    Array.prototype.forEach.call(el.querySelectorAll('[data-claim]'), function (b) {
+      b.onclick = async function () {
+        b.disabled = true;
+        var r = await api('/api/me/gigs/' + b.getAttribute('data-claim') + '/claim', {});
+        if (r.ok) alert('You\'re confirmed! Venue: ' + r.data.venue.name + ', ' + r.data.venue.contact_phone);
+        else alert(r.data.error || 'Could not claim that gig.');
+        refreshGigs();
+      };
+    });
+  }
+
+  function renderBooked(list) {
+    var el = $('booked');
+    if (!el) return;
+    if (!list.length) { el.innerHTML = 'Nothing booked yet.'; return; }
+    el.innerHTML = list.map(function (g) {
+      return '<div class="gig"><b>' + esc(g.venue_name) + '</b> &middot; ' + esc(g.city) + ', ' + esc(g.state) + '<div>' + gigLine(g) +
+        '</div><div class="muted">' + esc(g.genre_needed.split(',').map(genreLabel).join(', ')) + (g.budget ? ' &middot; $' + esc(g.budget) : '') +
+        '</div><div>Venue contact: ' + esc(g.venue_phone) + '</div></div>';
+    }).join('');
+  }
+
+  // ---------- start ----------
+  (async function init() {
+    if (/reset=[a-f0-9]+/.test(location.hash)) return showAuth('Reset');
+    await loadApp();
+  })();
+})();
+</script>
+</body>
+</html>
