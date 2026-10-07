@@ -91,8 +91,8 @@ app.post(
 
     const { rows } = await query(
       `INSERT INTO musicians
-         (name, contact_name, contact_phone, contact_email, city, state, genres, instruments, reach, rate_min, rate_max, founding_member, referred_by, referrer_type)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
+         (name, contact_name, contact_phone, contact_email, city, state, genres, instruments, reach, rate_min, rate_max, founding_member, referred_by, referrer_type, travel_radius_miles)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
       [
         body.name,
         body.contact_name || null,
@@ -108,6 +108,11 @@ app.post(
         foundingMember,
         body.referred_by || null,
         body.referred_by ? body.referrer_type || 'musician' : null,
+        // Stored for future distance-based matching; today's matching still uses
+        // the coarse `reach` tier (local/regional/nationwide) above.
+        Number.isInteger(Number(body.travel_radius_miles)) && Number(body.travel_radius_miles) > 0
+          ? Number(body.travel_radius_miles)
+          : 25,
       ]
     );
     const id = rows[0].id;
